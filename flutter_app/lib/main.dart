@@ -69,15 +69,11 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   String? _sharedVideoUrl;
-  bool _isProcessing = false;
   String? _result;
   final TextEditingController _urlController = TextEditingController();
 
-  // Backend URL - change this to your backend URL
-  // For iOS simulator use: http://localhost:8000
-  // For Android emulator use: http://10.0.2.2:8000
-  // For physical device use: http://YOUR_COMPUTER_IP:8000
-  final String backendUrl = 'http://10.10.131.31:8000';
+  // Backend URL - n8n webhook endpoint
+  final String backendUrl = 'https://n8n.nightsun.sk/webhook-test/6129cb38-d880-4def-8b67-40755e8a3f5a';
 
   @override
   void dispose() {
@@ -85,56 +81,19 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  Future<void> _sendVideoToBackend(String videoUrl) async {
+  void _handleUrlSubmitted(String videoUrl) {
     print('\n${'='*60}');
-    print('[FLUTTER] Sending video to backend');
-    print('[FLUTTER] Video URL: ${videoUrl.substring(0, videoUrl.length > 50 ? 50 : videoUrl.length)}...');
-    print('[FLUTTER] Backend URL: $backendUrl/api/video');
+    print('[FLUTTER] URL submitted: ${videoUrl.substring(0, videoUrl.length > 50 ? 50 : videoUrl.length)}...');
+    print('[FLUTTER] Showing action overlay...');
     print('${'='*60}');
-
+    
     setState(() {
-      _isProcessing = true;
+      _sharedVideoUrl = videoUrl;
       _result = null;
     });
-
-    try {
-      final requestBody = {'video_url': videoUrl};
-      print('[FLUTTER] Request body: $requestBody');
-      
-      final startTime = DateTime.now();
-      final response = await http.post(
-        Uri.parse('$backendUrl/api/video'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode(requestBody),
-      );
-      final duration = DateTime.now().difference(startTime);
-
-      print('[FLUTTER] Response received in ${duration.inMilliseconds}ms');
-      print('[FLUTTER] Status code: ${response.statusCode}');
-      print('[FLUTTER] Response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['status'] == 'success') {
-          print('[FLUTTER] ✓ Video received successfully');
-          print('[FLUTTER] Video ID: ${data['video_id']}');
-          setState(() {
-            _isProcessing = false;
-          });
-          print('[FLUTTER] Showing action overlay...');
-          _showActionOverlay();
-        }
-      } else {
-        print('[FLUTTER] ✗ Error: Unexpected status code ${response.statusCode}');
-      }
-    } catch (e) {
-      print('[FLUTTER] ✗ Exception occurred: $e');
-      setState(() {
-        _isProcessing = false;
-      });
-      _showErrorDialog('Failed to connect to backend: $e');
-    }
-    print('${'-'*60}\n');
+    
+    // Show action overlay immediately - API call will be made when user picks an option
+    _showActionOverlay();
   }
 
   void _showActionOverlay() {
@@ -154,29 +113,11 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void _showErrorDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Error'),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _handleSubmitUrl() {
     if (_urlController.text.trim().isNotEmpty) {
-      setState(() {
-        _sharedVideoUrl = _urlController.text.trim();
-      });
-      _sendVideoToBackend(_sharedVideoUrl!);
+      final url = _urlController.text.trim();
       _urlController.clear();
+      _handleUrlSubmitted(url);
     }
   }
 
@@ -247,7 +188,7 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(height: 60),
                   
                   // URL Input Section
-                  if (_sharedVideoUrl == null && !_isProcessing)
+                  if (_sharedVideoUrl == null)
                     Card(
                       child: Padding(
                         padding: const EdgeInsets.all(24),
@@ -298,20 +239,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                   
-                  if (_isProcessing)
-                    Column(
-                      children: [
-                        const CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6C63FF)),
-                        ),
-                        const SizedBox(height: 20),
-                        Text(
-                          'Processing video...',
-                          style: TextStyle(color: Colors.grey[400]),
-                        ),
-                      ],
-                    )
-                  else if (_sharedVideoUrl != null)
+                  if (_sharedVideoUrl != null)
                     Card(
                       child: Padding(
                         padding: const EdgeInsets.all(20),
@@ -403,14 +331,11 @@ class _HomePageState extends State<HomePage> {
                     ),
                   
                   // Test Button (for development)
-                  if (_sharedVideoUrl == null && !_isProcessing) ...[
+                  if (_sharedVideoUrl == null) ...[
                     const SizedBox(height: 24),
                     TextButton.icon(
                       onPressed: () {
-                        setState(() {
-                          _sharedVideoUrl = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
-                        });
-                        _sendVideoToBackend(_sharedVideoUrl!);
+                        _handleUrlSubmitted('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
                       },
                       icon: const Icon(Icons.play_arrow),
                       label: const Text('Quick Test with Sample'),
@@ -452,8 +377,9 @@ class _ActionOverlayState extends State<ActionOverlay> {
 
   Future<void> _sendAction(String action, {String? customQuestion}) async {
     print('\n${'='*60}');
-    print('[FLUTTER] Sending analysis request');
+    print('[FLUTTER] Sending first API request (URL + type)');
     print('[FLUTTER] Action: $action');
+    print('[FLUTTER] Video URL: ${widget.videoUrl.substring(0, widget.videoUrl.length > 50 ? 50 : widget.videoUrl.length)}...');
     if (customQuestion != null) {
       print('[FLUTTER] Custom Question: $customQuestion');
     }
@@ -465,18 +391,32 @@ class _ActionOverlayState extends State<ActionOverlay> {
     });
 
     try {
-      final requestBody = {
-        'video_url': widget.videoUrl,
-        'action': action,
-        'custom_question': customQuestion,
+      // Map action to new type format
+      final typeMap = {
+        'hoax_check': 'hoax',
+        'explain_this': 'info',
+        'expand_idea': 'clarification',
+        'custom_question': 'info', // Custom questions default to 'info' type
       };
+      final analysisType = typeMap[action] ?? 'info';
+      
+      final requestBody = {
+        'type': analysisType,
+        'url': widget.videoUrl,
+      };
+      
+      // Include custom question if provided
+      if (customQuestion != null && customQuestion.isNotEmpty) {
+        requestBody['custom_question'] = customQuestion;
+      }
+      
       print('[FLUTTER] Request body: $requestBody');
       
       final startTime = DateTime.now();
       print('[FLUTTER] Waiting for backend response...');
       
       final response = await http.post(
-        Uri.parse('${widget.backendUrl}/api/analyze'),
+        Uri.parse(widget.backendUrl),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(requestBody),
       );
@@ -488,13 +428,14 @@ class _ActionOverlayState extends State<ActionOverlay> {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         print('[FLUTTER] ✓ Analysis successful');
-        print('[FLUTTER] Response length: ${data['response'].length} characters');
+        final responseText = data['response'] ?? data['result'] ?? '';
+        print('[FLUTTER] Response length: ${responseText.length} characters');
         
         setState(() {
           _isLoading = false;
         });
         
-        widget.onResult(data['response']);
+        widget.onResult(responseText);
         
         if (mounted) {
           print('[FLUTTER] Closing overlay and showing results');
@@ -700,6 +641,7 @@ class _ActionOverlayState extends State<ActionOverlay> {
                       icon: const Icon(Icons.send_rounded, color: Color(0xFF6C63FF)),
                       onPressed: () {
                         if (_customQuestionController.text.trim().isNotEmpty) {
+                          // Custom questions use 'info' type
                           _sendAction('custom_question', customQuestion: _customQuestionController.text.trim());
                         }
                       },

@@ -7,7 +7,7 @@ class ShareViewController: UIViewController {
     
     // MARK: - Properties
     private var sharedURL: String?
-    private let backendURL = "http://10.10.131.31:8000" // Your Mac's IP address
+    private let backendURL = "https://n8n.nightsun.sk/webhook-test/6129cb38-d880-4def-8b67-40755e8a3f5a" // n8n webhook endpoint
     private let appGroupName = "group.com.videoanalyzer.shared"
     
     // UI Elements
@@ -212,7 +212,15 @@ class ShareViewController: UIViewController {
         titleLabel.text = "Analyzing..."
         activityIndicator.startAnimating()
         
-        guard let url = URL(string: "\(backendURL)/api/analyze") else {
+        // Map action to type format (matching Flutter app)
+        let typeMap: [String: String] = [
+            "hoax_check": "hoax",
+            "explain_this": "info",
+            "expand_idea": "clarification"
+        ]
+        let analysisType = typeMap[action] ?? "info"
+        
+        guard let url = URL(string: backendURL) else {
             showError("Invalid backend URL")
             return
         }
@@ -222,9 +230,8 @@ class ShareViewController: UIViewController {
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         
         let body: [String: Any] = [
-            "video_url": urlString,
-            "action": action,
-            "custom_question": NSNull()
+            "type": analysisType,
+            "url": urlString
         ]
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
         
@@ -249,10 +256,16 @@ class ShareViewController: UIViewController {
                 }
                 
                 do {
-                    if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                       let responseText = json["response"] as? String {
-                        print("[SHARE EXTENSION] ✓ Analysis complete (\(responseText.count) chars)")
-                        self?.showResult(responseText)
+                    if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                        // Check for both 'response' and 'result' fields (matching Flutter app)
+                        let responseText = (json["response"] as? String) ?? (json["result"] as? String) ?? ""
+                        if !responseText.isEmpty {
+                            print("[SHARE EXTENSION] ✓ Analysis complete (\(responseText.count) chars)")
+                            self?.showResult(responseText)
+                        } else {
+                            print("[SHARE EXTENSION] ✗ No response text in JSON")
+                            self?.showError("No response received from server")
+                        }
                     }
                 } catch {
                     print("[SHARE EXTENSION] ✗ JSON parse error: \(error)")

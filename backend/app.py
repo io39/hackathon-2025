@@ -69,7 +69,7 @@ def receive_video():
         data = request.get_json()
         log_request('/api/video', 'POST', data)
         
-        video_url = data.get('video_url')
+        video_url = data.get('url') or data.get('video_url')  # Support both formats for backward compatibility
         
         if not video_url:
             log_error('No video URL provided in request')
@@ -109,18 +109,19 @@ def receive_video():
 @app.route('/api/analyze', methods=['POST'])
 def analyze_video():
     """
-    Endpoint to analyze video based on selected action
+    Endpoint to analyze video based on selected type
     """
     try:
         data = request.get_json()
         log_request('/api/analyze', 'POST', data)
         
-        video_url = data.get('video_url')
-        action = data.get('action')
+        # Support both new format and old format for backward compatibility
+        video_url = data.get('url') or data.get('video_url')
+        analysis_type = data.get('type') or data.get('action')
         custom_question = data.get('custom_question')
         
-        if not video_url or not action:
-            log_error('Missing required parameters (video_url or action)')
+        if not video_url or not analysis_type:
+            log_error('Missing required parameters (url or type)')
             response = {
                 'status': 'error',
                 'message': 'Missing required parameters'
@@ -128,9 +129,17 @@ def analyze_video():
             log_response(400, response)
             return jsonify(response), 400
         
+        # Map new type format to old action format for response generation
+        type_to_action = {
+            'hoax': 'hoax_check',
+            'info': 'explain_this',
+            'clarification': 'expand_idea'
+        }
+        action = type_to_action.get(analysis_type, analysis_type)
+        
         log_info(f"Starting analysis...")
         log_info(f"  - Video URL: {video_url[:50]}...")
-        log_info(f"  - Action: {action}")
+        log_info(f"  - Type: {analysis_type}")
         if custom_question:
             log_info(f"  - Custom Question: {custom_question}")
         
@@ -139,19 +148,18 @@ def analyze_video():
         time.sleep(PROCESSING_DELAY)
         
         # Generate response based on action
-        log_info("Generating response based on action type...")
+        log_info("Generating response based on type...")
         response_text = generate_response(action, custom_question)
         
-        log_success(f"Analysis complete for action: {action}")
+        log_success(f"Analysis complete for type: {analysis_type}")
         log_info(f"Response length: {len(response_text)} characters")
         
         response = {
             'status': 'success',
-            'action': action,
-            'custom_question': custom_question,
+            'type': analysis_type,
             'response': response_text
         }
-        log_response(200, {'status': 'success', 'action': action, 'response_length': len(response_text)})
+        log_response(200, {'status': 'success', 'type': analysis_type, 'response_length': len(response_text)})
         return jsonify(response), 200
         
     except Exception as e:
