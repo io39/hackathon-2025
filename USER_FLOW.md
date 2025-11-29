@@ -249,3 +249,4 @@ The app maintains these states:
 
 **The entire user experience is designed to be intuitive, fast, and visually appealing!** 🎉
 
+

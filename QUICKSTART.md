@@ -124,3 +124,4 @@ Check the README files:
 
 Enjoy building your Video Analyzer! 🚀
 
+
