@@ -178,7 +178,6 @@ class ShareViewController: UIViewController {
                         print("[SHARE EXTENSION] ✓ Received URL: \(url.absoluteString)")
                         DispatchQueue.main.async {
                             self?.sharedURL = url.absoluteString
-                            self?.sendVideoToBackend()
                         }
                     }
                 }
@@ -192,7 +191,6 @@ class ShareViewController: UIViewController {
                         print("[SHARE EXTENSION] ✓ Received text: \(text)")
                         DispatchQueue.main.async {
                             self?.sharedURL = text
-                            self?.sendVideoToBackend()
                         }
                     }
                 }
@@ -204,50 +202,6 @@ class ShareViewController: UIViewController {
     }
     
     // MARK: - Backend Communication
-    private func sendVideoToBackend() {
-        guard let urlString = sharedURL else {
-            showError("No URL to process")
-            return
-        }
-        
-        print("[SHARE EXTENSION] Sending to backend: \(backendURL)/api/video")
-        activityIndicator.startAnimating()
-        
-        guard let url = URL(string: "\(backendURL)/api/video") else {
-            showError("Invalid backend URL")
-            return
-        }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        let body: [String: Any] = ["video_url": urlString]
-        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
-        
-        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
-            DispatchQueue.main.async {
-                self?.activityIndicator.stopAnimating()
-                
-                if let error = error {
-                    print("[SHARE EXTENSION] ✗ Error: \(error.localizedDescription)")
-                    self?.showError("Failed to connect to backend: \(error.localizedDescription)")
-                    return
-                }
-                
-                guard let httpResponse = response as? HTTPURLResponse,
-                      httpResponse.statusCode == 200 else {
-                    print("[SHARE EXTENSION] ✗ Invalid response")
-                    self?.showError("Backend returned error")
-                    return
-                }
-                
-                print("[SHARE EXTENSION] ✓ Video received by backend")
-                // Options are already visible, user can now tap one
-            }
-        }.resume()
-    }
-    
     private func analyzeVideo(action: String) {
         guard let urlString = sharedURL else { return }
         
@@ -274,7 +228,7 @@ class ShareViewController: UIViewController {
         ]
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
         
-        print("[SHARE EXTENSION] Waiting for backend response...")
+        print("[SHARE EXTENSION] Sending request to backend...")
         
         URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             DispatchQueue.main.async {

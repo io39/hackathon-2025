@@ -19,4 +19,3 @@ echo "📡 Starting Flask server on http://localhost:5000"
 echo ""
 python app.py
 
-
