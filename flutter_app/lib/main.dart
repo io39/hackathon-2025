@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 
 void main() {
-  runApp(const VideoAnalyzerApp());
+  runApp(const CheckitApp());
 }
 
-class VideoAnalyzerApp extends StatelessWidget {
-  const VideoAnalyzerApp({super.key});
+class CheckitApp extends StatelessWidget {
+  const CheckitApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Video Analyzer',
+      title: 'Checkit',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
@@ -73,7 +73,7 @@ class HomePage extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Video Analyzer',
+                  'Checkit',
                   style: Theme.of(context).textTheme.displayLarge?.copyWith(
                     fontWeight: FontWeight.w300,
                   ),
@@ -85,7 +85,7 @@ class HomePage extends StatelessWidget {
                   context,
                   icon: Icons.share_outlined,
                   title: 'Share from Anywhere',
-                  description: 'Open Instagram, TikTok, or any app with a video. Tap the share button and select Video Analyzer.',
+                  description: 'Open Instagram, TikTok, or any app with a video. Tap the share button and select Checkit.',
                 ),
                 const SizedBox(height: 32),
                 

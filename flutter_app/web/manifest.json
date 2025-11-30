@@ -1,6 +1,6 @@
 {
-    "name": "video_analyzer",
-    "short_name": "video_analyzer",
+    "name": "Checkit",
+    "short_name": "Checkit",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

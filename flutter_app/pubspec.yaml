@@ -1,5 +1,5 @@
-name: video_analyzer
-description: A Flutter application for video analysis
+name: checkit
+description: A Flutter application for fact-checking and video analysis
 publish_to: 'none'
 version: 1.0.0+1
 
